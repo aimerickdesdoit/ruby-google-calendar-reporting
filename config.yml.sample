@@ -1,0 +1,17 @@
+google:
+    login: "<login du compte google>"
+    password: "<mot de passe du compte google>"
+    calendar: "<libellé de l'agenda>"
+
+email:
+    to: "<destinataire de l'e-mail>"
+    from: "<expéditeur de l'e-mail>"
+    subject: "<sujet de l'e-mail>"
+
+action_mailer:
+    smtp_settings:
+        :address: ""
+        :domain: ""
+        :user_name: ""
+        :password: ""
+        :authentication: :login
