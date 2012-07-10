@@ -32,15 +32,20 @@ events.each do |event|
   unless event.recurrence
     max_length = event.title.size if max_length < event.title.size
     duration = event.end_time - event.start_time
-    durations[event.title] ||= 0
-    durations[event.title] += duration
+    key = event.title.slugify_trim
+    durations[key] ||= {:title => event.title, :duration => 0}
+    durations[key][:duration] += duration
   end
 end
 
+durations = durations.collect { |a, b| [a, b] }.sort { |a, b| a[0] <=> b[0] }
+durations = ActiveSupport::OrderedHash[durations]
+  
 max_length +=5
 
-content = durations.collect do |title, duration|
-  duration = Time.at(duration).strftime("%Hh%M").gsub(/^0/, '')
+content = durations.collect do |dc_title, infos|
+  duration = Time.at(infos[:duration]).strftime("%Hh%M").gsub(/^0/, '')
+  title = infos[:title].downcase.to_s.gsub(/(\A| )./) { |m| m.upcase }
   "#{title.ljust(max_length)} #{duration}"
 end.join("\n")
 
