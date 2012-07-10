@@ -15,37 +15,13 @@ class ReportMailer < ActionMailer::Base
 
 end
 
-service = GCal4Ruby::Service.new
-
-service.authenticate(CONFIG['google']['login'], CONFIG['google']['password'])
-
-cal = GCal4Ruby::Calendar.find(service, CONFIG['google']['calendar']).first
-events = GCal4Ruby::Event.find(service, '', {
-  :calendar => cal.id,
-  'start-min' => Time.now.beginning_of_day.utc.xmlschema,
-  'start-max' => Time.now.end_of_day.utc.xmlschema
-})
-
-durations = {}
-events.each do |event|
-  unless event.recurrence
-    duration = event.end_time - event.start_time
-    key = event.title.slugify_trim
-    durations[key] ||= {:title => event.title, :duration => 0}
-    durations[key][:duration] += duration
-  end
+def time_format(time)
+  Time.at(time).utc.strftime("%Hh%M").gsub(/^0/, '')
 end
 
-durations = durations.collect { |a, b| [a, b] }.sort { |a, b| a[0] <=> b[0] }
-durations = ActiveSupport::OrderedHash[durations]
-
-content = '<table cellspacing="0" cellpadding="0">'
-content << durations.collect do |dc_title, infos|
-  duration = Time.at(infos[:duration]).strftime("%Hh%M").gsub(/^0/, '')
-  title = infos[:title].downcase.to_s.gsub(/(\A| )./) { |m| m.upcase }
-  "<tr><td>#{title} </td><td>#{duration}</td></tr>\n"
-end.join
-content << '</table>'
+def strip_tags(text)
+  text.gsub(/(<.*?>)/, '')
+end
 
 @shell = Thor::Base.shell.new
 
@@ -65,11 +41,42 @@ def yes_no_question(message)
   end
 end
 
-def strip_tags(text)
-  text.gsub(/(<.*?>)/, '')
+service = GCal4Ruby::Service.new
+
+service.authenticate(CONFIG['google']['login'], CONFIG['google']['password'])
+
+cal = GCal4Ruby::Calendar.find(service, CONFIG['google']['calendar']).first
+events = GCal4Ruby::Event.find(service, '', {
+  :calendar => cal.id,
+  'start-min' => Time.now.beginning_of_day.utc.xmlschema,
+  'start-max' => Time.now.end_of_day.utc.xmlschema
+})
+
+durations = {}
+events.each do |event|
+  unless event.recurrence
+    duration = event.end_time.to_i - event.start_time.to_i
+    key = event.title.slugify_trim
+    durations[key] ||= {:title => event.title, :duration => 0}
+    durations[key][:duration] += duration
+  end
 end
 
+durations = durations.collect { |a, b| [a, b] }.sort { |a, b| a[0] <=> b[0] }
+durations = ActiveSupport::OrderedHash[durations]
+
+content = '<table cellspacing="0" cellpadding="0">'
+content << durations.collect do |dc_title, infos|
+  duration = time_format(infos[:duration])
+  title = infos[:title].downcase.to_s.gsub(/(\A| )./) { |m| m.upcase }
+  "<tr><td>#{title} </td><td>#{duration}</td></tr>\n"
+end.join
+content << '</table>'
+
 puts strip_tags(content)
+
+duration = durations.collect { |key, infos| infos[:duration] }.sum
+puts "Total des heures : #{time_format duration}"
 
 comment = question('Un commentaire à ajouter ?')
 
