@@ -4,11 +4,12 @@ class ReportMailer < ActionMailer::Base
 
   def create_email(content)
     mail(
-      :to       => CONFIG['email']['to'],
-      :bcc      => CONFIG['email']['from'],
-      :subject  => CONFIG['email']['subject'],
-      :from     => CONFIG['email']['from'],
-      :body     => content
+      :to           => CONFIG['email']['to'],
+      :bcc          => CONFIG['email']['from'],
+      :subject      => CONFIG['email']['subject'],
+      :from         => CONFIG['email']['from'],
+      :body         => content,
+      :content_type => 'text/html'
     )
   end
 
@@ -25,12 +26,9 @@ events = GCal4Ruby::Event.find(service, '', {
   'start-max' => Time.now.end_of_day.utc.xmlschema
 })
 
-max_length = 0
-
 durations = {}
 events.each do |event|
   unless event.recurrence
-    max_length = event.title.size if max_length < event.title.size
     duration = event.end_time - event.start_time
     key = event.title.slugify_trim
     durations[key] ||= {:title => event.title, :duration => 0}
@@ -40,14 +38,14 @@ end
 
 durations = durations.collect { |a, b| [a, b] }.sort { |a, b| a[0] <=> b[0] }
 durations = ActiveSupport::OrderedHash[durations]
-  
-max_length +=5
 
-content = durations.collect do |dc_title, infos|
+content = '<table cellspacing="0" cellpadding="0">'
+content << durations.collect do |dc_title, infos|
   duration = Time.at(infos[:duration]).strftime("%Hh%M").gsub(/^0/, '')
   title = infos[:title].downcase.to_s.gsub(/(\A| )./) { |m| m.upcase }
-  "#{title.ljust(max_length)} #{duration}"
-end.join("\n")
+  "<tr><td>#{title} </td><td>#{duration}</td></tr>\n"
+end.join
+content << '</table>'
 
 @shell = Thor::Base.shell.new
 
@@ -67,14 +65,21 @@ def yes_no_question(message)
   end
 end
 
-puts content
+def strip_tags(text)
+  text.gsub(/(<.*?>)/, '')
+end
+
+puts strip_tags(content)
 
 comment = question('Un commentaire à ajouter ?')
-content << "\n\n#{comment}" unless comment.blank?
 
-puts content
+unless comment.blank?
+  content << "\n<p>#{comment}</p>"
+  puts strip_tags(content)
+end
 
 if yes_no_question "Envoyé l'e-mail ?"
+  content << '<style> td, p { padding: 5px; } </style>'
   ReportMailer.create_email(content).deliver
   puts 'e-mail envoyé'
 end
