@@ -98,7 +98,7 @@ unless comment.blank?
   puts strip_tags(content)
 end
 
-if yes_no_question "Envoyé l'e-mail ?"
+if yes_no_question "Envoyer l'e-mail ?"
   content << '<style> td, p { padding: 5px; } </style>'
   ReportMailer.create_email(content).deliver
   puts "e-mail envoyé à #{CONFIG['email']['to']}"
