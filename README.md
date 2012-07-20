@@ -6,4 +6,18 @@
 	cd ruby-google-calendar-reporting
 	gem install bundler
 	bundle install
-	ruby ./reporting.rb
+	ruby reporting.rb
+
+## Date range
+
+### daily (default)
+
+	ruby reporting.rb
+
+### weekly
+
+	ruby reporting.rb WEEKLY
+
+### monthly
+
+	ruby reporting.rb MONTHLY

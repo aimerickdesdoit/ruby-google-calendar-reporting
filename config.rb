@@ -19,6 +19,7 @@ end if File.exist?(gemfile)
 Bundler.require(:default, env) if defined?(Bundler)
 
 require 'active_support'
+require 'active_support/core_ext/object/conversions'
 require 'action_mailer'
 require 'thor'
 

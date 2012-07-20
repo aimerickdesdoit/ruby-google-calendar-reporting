@@ -15,8 +15,11 @@ class ReportMailer < ActionMailer::Base
 
 end
 
-def time_format(time)
-  Time.at(time).utc.strftime("%Hh%M").gsub(/^0/, '')
+def time_format(seconds)
+  minutes = seconds / 60
+  hours = (minutes / 60)
+  minutes = minutes % 60
+  "#{hours}h#{minutes}"
 end
 
 def strip_tags(text)
@@ -41,20 +44,30 @@ def yes_no_question(message)
   end
 end
 
-service = GCal4Ruby::Service.new
+argv = ARGV.map(&:downcase)
 
+start_min, start_max = if argv.include?('weekly')
+  [Time.now.beginning_of_week.utc.xmlschema, Time.now.end_of_week.utc.xmlschema]
+elsif argv.include?('monthly')
+  [Time.now.beginning_of_month.utc.xmlschema, Time.now.end_of_month.utc.xmlschema]
+else
+  [Time.now.beginning_of_day.utc.xmlschema, Time.now.end_of_day.utc.xmlschema]
+end
+
+service = GCal4Ruby::Service.new
 service.authenticate(CONFIG['google']['login'], CONFIG['google']['password'])
 
 cal = GCal4Ruby::Calendar.find(service, CONFIG['google']['calendar']).first
 events = GCal4Ruby::Event.find(service, '', {
   :calendar => cal.id,
-  'start-min' => Time.now.beginning_of_day.utc.xmlschema,
-  'start-max' => Time.now.end_of_day.utc.xmlschema
+  'max-results' => 500,
+  'start-min' => start_min,
+  'start-max' => start_max
 })
 
 durations = {}
 events.each do |event|
-  unless event.recurrence
+  if !event.recurrence && !event.instance_variable_get('@all_day')
     duration = event.end_time.to_i - event.start_time.to_i
     key = event.title.slugify_trim
     durations[key] ||= {:title => event.title, :duration => 0}
