@@ -88,5 +88,5 @@ end
 if yes_no_question "Envoyé l'e-mail ?"
   content << '<style> td, p { padding: 5px; } </style>'
   ReportMailer.create_email(content).deliver
-  puts 'e-mail envoyé'
+  puts "e-mail envoyé à #{CONFIG['email']['to']}"
 end
